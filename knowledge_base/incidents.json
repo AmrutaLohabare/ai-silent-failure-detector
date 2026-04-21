@@ -1,0 +1,74 @@
+[
+  {
+    "id": "INC-001",
+    "type": "EMPTY_SUCCESS_RESPONSE",
+    "path_pattern": "/api/auth/refresh",
+    "title": "Auth token refresh returning empty body",
+    "root_cause": "Redis session store ran out of memory. Writes silently failed — the endpoint returned HTTP 200 but did not persist the new token. Subsequent API calls failed with 401s, appearing as user-facing logout events.",
+    "detection_lag_hours": 4,
+    "business_impact": "8,000 users silently logged out over 4 hours. Support ticket volume spiked 300%.",
+    "resolution": "Increased Redis maxmemory to 4GB and enabled LRU eviction policy. Added a write-verify step in the token refresh handler.",
+    "runbook": "1. Check Redis memory usage: redis-cli INFO memory. 2. Check eviction events: redis-cli INFO stats | grep evicted_keys. 3. If evictions > 0, flush expired sessions: redis-cli FLUSHDB (with caution). 4. Restart the auth service after resolving memory pressure.",
+    "tags": ["redis", "auth", "session", "memory"]
+  },
+  {
+    "id": "INC-002",
+    "type": "EMPTY_SUCCESS_RESPONSE",
+    "path_pattern": "/api/recommendations",
+    "title": "Recommendations endpoint returning empty payload",
+    "root_cause": "ML model serving layer (Triton) timed out internally but the API gateway caught the timeout and returned a 200 with an empty array instead of propagating the 503. Frontend treated empty array as 'no recommendations available' — no error was surfaced to the user.",
+    "detection_lag_hours": 6,
+    "business_impact": "Recommendation widgets blank for 6 hours. Estimated 12% drop in click-through revenue for that session window.",
+    "resolution": "Fixed the API gateway timeout handler to propagate 503 instead of swallowing it. Added a fallback to cached recommendations when the model server is unavailable.",
+    "runbook": "1. Check Triton server health: curl http://triton-server:8000/v2/health/ready. 2. Check gateway timeout config in nginx.conf (proxy_read_timeout). 3. Roll back to cached recommendations: kubectl set env deploy/recommendations USE_CACHE=true. 4. Restart Triton if unhealthy: kubectl rollout restart deploy/triton.",
+    "tags": ["ml", "triton", "recommendations", "timeout", "gateway"]
+  },
+  {
+    "id": "INC-003",
+    "type": "SUB_THRESHOLD_ERROR_RATE",
+    "path_pattern": "/api/checkout",
+    "title": "Checkout 404s staying just below pager threshold",
+    "root_cause": "A canary deployment of the inventory service introduced a race condition in stock reservation. Approximately 1.8% of checkout requests hit the race and returned 404 for valid cart items. The error rate was carefully tuned by the deployment to stay below the 2% pager threshold — this was a legitimate bug, not an attack.",
+    "detection_lag_hours": 8,
+    "business_impact": "Estimated $42,000 in lost checkout revenue over 8 hours. 1,800 failed purchase attempts.",
+    "resolution": "Rolled back the canary deployment. Added a mutex lock around the stock reservation step. Lowered the pager threshold to 1% for /api/checkout specifically.",
+    "runbook": "1. Identify the canary: kubectl get pods -l track=canary. 2. Roll back canary: kubectl argo rollouts abort <rollout-name>. 3. Verify error rate drops: watch -n5 'kubectl logs deploy/inventory | grep ERROR | wc -l'. 4. Investigate race condition with distributed tracing in Jaeger.",
+    "tags": ["checkout", "inventory", "canary", "race-condition", "rollback"]
+  },
+  {
+    "id": "INC-004",
+    "type": "SUB_THRESHOLD_ERROR_RATE",
+    "path_pattern": "/api/cart",
+    "title": "Cart item fetch errors clustering below alert threshold",
+    "root_cause": "DynamoDB hot partition for cart items belonging to a large B2B customer. Throttling errors were being retried silently by the SDK, appearing as high latency rather than errors. Eventually retries exhausted and some requests returned 404.",
+    "detection_lag_hours": 3,
+    "business_impact": "Single enterprise customer affected. SLA breach triggered, $15,000 credit issued.",
+    "resolution": "Added adaptive capacity for the cart table. Implemented partition key sharding for large accounts. Added DynamoDB throttling metrics to the dashboard.",
+    "runbook": "1. Check DynamoDB consumed capacity: aws cloudwatch get-metric-statistics --metric-name ConsumedReadCapacityUnits. 2. Identify hot partition keys via DynamoDB contributor insights. 3. Enable on-demand capacity mode as immediate relief: aws dynamodb update-table --billing-mode PAY_PER_REQUEST. 4. Long-term: implement partition sharding for accounts with >10k cart items.",
+    "tags": ["dynamodb", "cart", "throttling", "hot-partition", "b2b"]
+  },
+  {
+    "id": "INC-005",
+    "type": "LATENCY_SPIKE_ON_SUCCESS",
+    "path_pattern": "/api/checkout",
+    "title": "Checkout latency spikes masking silent payment gateway retries",
+    "root_cause": "Payment gateway (Stripe) began returning intermittent 503s. The checkout service retried silently up to 3 times before succeeding, causing latency to spike to 3-5x normal. Users saw a slow checkout but got a success — however, 0.3% of transactions were double-charged due to a non-idempotent retry implementation.",
+    "detection_lag_hours": 12,
+    "business_impact": "312 customers double-charged. Full refund issued. Regulatory notification required.",
+    "resolution": "Implemented idempotency keys for all Stripe API calls. Added explicit retry logging. Set up a separate latency alert for p99 > 2x baseline on checkout.",
+    "runbook": "1. Check Stripe status: https://status.stripe.com. 2. Search for duplicate charges: stripe charges list --limit 100 | grep 'duplicate'. 3. Issue refunds for duplicates via Stripe dashboard. 4. Verify idempotency key implementation: grep -r 'idempotency' src/payments/. 5. Contact Stripe support with the incident window for audit trail.",
+    "tags": ["stripe", "payments", "idempotency", "retry", "double-charge"]
+  },
+  {
+    "id": "INC-006",
+    "type": "LATENCY_SPIKE_ON_SUCCESS",
+    "path_pattern": "/api/products",
+    "title": "Product listing latency spike during cache warm-up",
+    "root_cause": "A Redis cache flush during a maintenance window caused a thundering herd on the product database. All product listing requests bypassed the cache simultaneously, overwhelming Postgres. Requests succeeded but took 2-8 seconds instead of 50ms. Some users abandoned their sessions.",
+    "detection_lag_hours": 1,
+    "business_impact": "30-minute degraded experience for all users. Estimated 8% increase in bounce rate during the window.",
+    "resolution": "Implemented cache stampede protection using a probabilistic early recomputation strategy. Added circuit breaker to prevent thundering herd on cache miss.",
+    "runbook": "1. Detect stampede: check Postgres connection count: SELECT count(*) FROM pg_stat_activity. 2. Temporarily reduce load: kubectl scale deploy/products --replicas=10. 3. Pre-warm cache manually: python scripts/cache_warm.py --category all. 4. Re-enable cache gradually with feature flag: CACHE_ENABLED=partial -> full.",
+    "tags": ["redis", "cache", "postgres", "thundering-herd", "stampede"]
+  }
+]

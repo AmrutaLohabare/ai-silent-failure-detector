@@ -1,0 +1,13 @@
+langchain
+langchain-openai
+langchain-core
+langchain-community
+openai
+pydantic
+pytest
+pytest-asyncio
+python-dotenv
+
+# RAG dependencies
+faiss-cpu
+sentence-transformers # optional — falls back to TF-IDF if unavailable
