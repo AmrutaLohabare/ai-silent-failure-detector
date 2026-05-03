@@ -234,7 +234,7 @@ Run `python main.py` to generate them in `screenshots\`.
 
 ## Connect
 
-LinkedIn: https://www.linkedin.com/in/amruta-lohabare/
+LinkedIn : https://www.linkedin.com/in/amruta-lohabare-82017046/
 Follow the series: #AISilentFailureDetector
 
 Star this repo if it helped you think differently about QA.
