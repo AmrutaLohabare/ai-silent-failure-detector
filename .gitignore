@@ -1,3 +1,5 @@
 __pycache__/ 
 *.pyc 
 *.pyo 
+part3_playwright\screenshots\ 
+part3_playwright\reports\ 
