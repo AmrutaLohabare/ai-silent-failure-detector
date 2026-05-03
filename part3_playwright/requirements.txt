@@ -1,0 +1,14 @@
+# Part 3 - Playwright + AI Vision
+# Tested on Windows, Python 3.13.5
+
+# Already installed from Parts 1 and 2 - no reinstall needed
+# python-dotenv
+# pytest
+# openai
+
+# New for Part 3
+Pillow
+playwright
+
+# Optional - only needed if using GPT-4o Vision
+# openai is already installed from Part 1
