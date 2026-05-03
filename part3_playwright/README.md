@@ -213,7 +213,9 @@ Runbook:
   - Audit dark mode stylesheets for color variable conflicts
   - Add contrast check to CI: axe-core audit on all CTA buttons
 ```
-
+## Screenshots
+Screenshots are generated locally on each run.
+Run `python main.py` to generate them in `screenshots\`.
 ---
 
 ## Series Roadmap
