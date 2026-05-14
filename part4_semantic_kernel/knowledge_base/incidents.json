@@ -1,0 +1,58 @@
+[
+  {
+    "id": "INC-015",
+    "type": "EMPTY_SUCCESS_RESPONSE",
+    "path_pattern": "/api/auth/refresh",
+    "title": "Azure AD token refresh returning empty body — managed identity misconfiguration",
+    "root_cause": "Azure Managed Identity permissions were revoked during a Key Vault policy update. The token refresh endpoint returned HTTP 200 but with an empty access token payload. Downstream API calls silently failed with 401s that were swallowed by the retry policy.",
+    "detection_lag_hours": 5,
+    "business_impact": "12,000 enterprise users silently de-authenticated. B2B portal inaccessible for 5 hours. SLA breach for 3 enterprise accounts.",
+    "resolution": "Restored Managed Identity permissions in Azure Key Vault access policies. Added token payload validation: if access_token field is empty, return 503 instead of 200.",
+    "runbook": "1. Check Managed Identity: az identity show --name <identity-name> --resource-group <rg>. 2. Verify Key Vault access policy: az keyvault show --name <vault-name>. 3. Re-grant permissions: az keyvault set-policy --name <vault> --object-id <identity-id> --secret-permissions get list. 4. Restart auth service: az webapp restart --name <app> --resource-group <rg>.",
+    "agent_verdict": "TRUE_POSITIVE",
+    "azure_service": "Azure Active Directory / Key Vault",
+    "tags": ["azure", "managed-identity", "auth", "key-vault", "enterprise", "empty-response"]
+  },
+  {
+    "id": "INC-016",
+    "type": "SUB_THRESHOLD_ERROR_RATE",
+    "path_pattern": "/api/cart",
+    "title": "Azure CosmosDB silent throttling causing sub-threshold cart errors",
+    "root_cause": "CosmosDB RU/s limit was reached during a traffic spike. The SDK silently retried throttled requests up to 3 times. Most retries succeeded — but the total error rate settled at 1.6%, just below the 2% pager threshold. Each failed request added 3-9 seconds of latency from retries.",
+    "detection_lag_hours": 4,
+    "business_impact": "Cart page latency spiked for 18% of users. 4-hour window. Estimated 22% cart abandonment increase. No alert fired.",
+    "resolution": "Increased CosmosDB provisioned RU/s from 1000 to 4000. Enabled autoscale. Added explicit throttling metric alert at 0 throttled requests (any throttling = alert).",
+    "runbook": "1. Check throttling: Azure Portal > CosmosDB > Insights > Throttled Requests. 2. Scale RU/s immediately: az cosmosdb sql container throughput update --throughput 4000. 3. Enable autoscale: az cosmosdb sql container throughput migrate --type Autoscale. 4. Add alert: throttled_requests > 0 for 5 minutes.",
+    "agent_verdict": "TRUE_POSITIVE",
+    "azure_service": "Azure CosmosDB",
+    "tags": ["azure", "cosmosdb", "throttling", "cart", "retry", "sub-threshold"]
+  },
+  {
+    "id": "INC-017",
+    "type": "LATENCY_SPIKE_ON_SUCCESS",
+    "path_pattern": "/api/checkout",
+    "title": "Azure Functions cold start causing silent checkout latency spikes",
+    "root_cause": "Payment processing was moved to Azure Functions Consumption plan. Cold starts added 3-8 seconds to the first request after idle periods. Checkout succeeded but with 4-6x normal latency. The function returned 200 — no timeout, no error, just very slow. Users saw a frozen checkout button.",
+    "detection_lag_hours": 6,
+    "business_impact": "Checkout latency p99 jumped from 450ms to 6.2 seconds during cold start windows. 31% checkout abandonment during those windows.",
+    "resolution": "Moved payment function to Premium plan with pre-warmed instances. Added minimum instance count of 1. Cold start eliminated.",
+    "runbook": "1. Identify cold starts: Azure Portal > Function App > Monitor > Logs > search 'Cold Start'. 2. Check plan: az functionapp show --name <func> --query 'sku'. 3. Upgrade to Premium: az functionapp update --plan-name <premium-plan>. 4. Set minimum instances: az functionapp config set --minimum-elastic-instance-count 1.",
+    "agent_verdict": "TRUE_POSITIVE",
+    "azure_service": "Azure Functions",
+    "tags": ["azure", "functions", "cold-start", "checkout", "latency", "serverless"]
+  },
+  {
+    "id": "INC-018",
+    "type": "EMPTY_SUCCESS_RESPONSE",
+    "path_pattern": "/api/recommendations",
+    "title": "Azure API Management policy silently stripping recommendation response body",
+    "root_cause": "An Azure API Management policy update introduced a response transformation that incorrectly stripped the body for responses over 512KB. The recommendations endpoint returned HTTP 200 with Content-Length: 0. APIM logged the request as successful. The backend service was healthy. No error anywhere in the chain.",
+    "detection_lag_hours": 8,
+    "business_impact": "All personalised recommendations blank for 8 hours. Estimated 15% drop in cross-sell revenue. No backend error, no APIM error — only the empty body was the signal.",
+    "resolution": "Reverted the APIM policy update. Added response body size validation in the APIM policy: if body is empty and backend returned content, raise 502. Added Semantic Kernel skill to validate response payloads.",
+    "runbook": "1. Check APIM policy history: Azure Portal > API Management > APIs > your-api > Policy > Revision history. 2. Revert to previous policy revision. 3. Test: az rest --method get --url https://<apim-name>.azure-api.net/api/recommendations. 4. Add body validation policy: <choose><when condition='@(context.Response.Body.As<string>().Length == 0)'>.</when></choose>.",
+    "agent_verdict": "TRUE_POSITIVE",
+    "azure_service": "Azure API Management",
+    "tags": ["azure", "apim", "api-management", "recommendations", "policy", "empty-response"]
+  }
+]

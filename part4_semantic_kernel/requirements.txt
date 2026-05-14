@@ -1,0 +1,9 @@
+# Part 4 - Semantic Kernel + Azure AI Search
+# Tested on Windows, Python 3.13.5
+# Already installed from Parts 1-3: pytest, python-dotenv, openai
+
+semantic-kernel==1.41.3
+
+# Optional - Azure AI Search (swap in for TF-IDF mock in production)
+# azure-search-documents
+# azure-identity
