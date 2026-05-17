@@ -1,0 +1,8 @@
+# Part 5 - AutoGen Self-Healing
+# Tested on Windows, Python 3.13.5
+# Already installed: pytest, python-dotenv
+
+pyautogen==0.2.35
+
+# Optional - only needed for LLM-powered agents
+# openai is already installed from Part 1
