@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "service": "shopapp-checkout",
+    "environment": "production",
+    "window": "last_60_minutes",
+    "generated": "2024-01-15T10:00:00Z"
+  },
+  "metrics": {
+    "http_request_duration_p99_ms": [
+      {"timestamp": "2024-01-15T09:00:00Z", "value": 210, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:05:00Z", "value": 215, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:10:00Z", "value": 220, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:15:00Z", "value": 890, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:20:00Z", "value": 2100, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:25:00Z", "value": 3400, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:30:00Z", "value": 4200, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:35:00Z", "value": 3800, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:40:00Z", "value": 4100, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:45:00Z", "value": 3900, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:50:00Z", "value": 4300, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:55:00Z", "value": 4100, "endpoint": "/api/checkout"}
+    ],
+    "http_error_rate_pct": [
+      {"timestamp": "2024-01-15T09:00:00Z", "value": 0.1, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:05:00Z", "value": 0.1, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:10:00Z", "value": 0.2, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:15:00Z", "value": 0.8, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:20:00Z", "value": 1.4, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:25:00Z", "value": 1.7, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:30:00Z", "value": 1.9, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:35:00Z", "value": 1.8, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:40:00Z", "value": 1.9, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:45:00Z", "value": 1.8, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:50:00Z", "value": 1.9, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:55:00Z", "value": 1.8, "endpoint": "/api/checkout"}
+    ],
+    "http_requests_per_second": [
+      {"timestamp": "2024-01-15T09:00:00Z", "value": 142, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:10:00Z", "value": 138, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:20:00Z", "value": 121, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:30:00Z", "value": 98, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:40:00Z", "value": 87, "endpoint": "/api/checkout"},
+      {"timestamp": "2024-01-15T09:50:00Z", "value": 82, "endpoint": "/api/checkout"}
+    ]
+  },
+  "traces": [
+    {
+      "trace_id": "abc-001",
+      "root_span": "/api/checkout",
+      "duration_ms": 4250,
+      "status": "ok",
+      "spans": [
+        {"service": "checkout-api",     "operation": "POST /checkout",         "duration_ms": 4250, "status": "ok"},
+        {"service": "payment-gateway",  "operation": "stripe.charge",          "duration_ms": 3980, "status": "ok"},
+        {"service": "inventory-service","operation": "reserve_stock",          "duration_ms": 45,   "status": "ok"},
+        {"service": "notification-svc", "operation": "send_confirmation_email","duration_ms": 12,   "status": "ok"}
+      ]
+    },
+    {
+      "trace_id": "abc-002",
+      "root_span": "/api/checkout",
+      "duration_ms": 3890,
+      "status": "ok",
+      "spans": [
+        {"service": "checkout-api",     "operation": "POST /checkout",         "duration_ms": 3890, "status": "ok"},
+        {"service": "payment-gateway",  "operation": "stripe.charge",          "duration_ms": 3650, "status": "ok"},
+        {"service": "inventory-service","operation": "reserve_stock",          "duration_ms": 48,   "status": "ok"},
+        {"service": "notification-svc", "operation": "send_confirmation_email","duration_ms": 10,   "status": "ok"}
+      ]
+    },
+    {
+      "trace_id": "abc-003",
+      "root_span": "/api/checkout",
+      "duration_ms": 210,
+      "status": "ok",
+      "spans": [
+        {"service": "checkout-api",     "operation": "POST /checkout",         "duration_ms": 210,  "status": "ok"},
+        {"service": "payment-gateway",  "operation": "stripe.charge",          "duration_ms": 180,  "status": "ok"},
+        {"service": "inventory-service","operation": "reserve_stock",          "duration_ms": 42,   "status": "ok"},
+        {"service": "notification-svc", "operation": "send_confirmation_email","duration_ms": 11,   "status": "ok"}
+      ]
+    }
+  ],
+  "logs": [
+    {"timestamp": "2024-01-15T09:14:52Z", "level": "WARN",  "service": "payment-gateway", "message": "Stripe API response time elevated: 890ms (threshold: 500ms)"},
+    {"timestamp": "2024-01-15T09:15:10Z", "level": "WARN",  "service": "payment-gateway", "message": "Stripe API response time elevated: 1240ms"},
+    {"timestamp": "2024-01-15T09:18:33Z", "level": "WARN",  "service": "checkout-api",    "message": "Payment processing slow - retry attempt 1"},
+    {"timestamp": "2024-01-15T09:18:35Z", "level": "WARN",  "service": "checkout-api",    "message": "Payment processing slow - retry attempt 2"},
+    {"timestamp": "2024-01-15T09:20:11Z", "level": "ERROR", "service": "checkout-api",    "message": "Payment gateway timeout after 3 retries - returning HTTP 200"},
+    {"timestamp": "2024-01-15T09:22:45Z", "level": "ERROR", "service": "checkout-api",    "message": "Payment gateway timeout after 3 retries - returning HTTP 200"},
+    {"timestamp": "2024-01-15T09:25:18Z", "level": "WARN",  "service": "payment-gateway", "message": "Rate limit approaching: 847/1000 requests"},
+    {"timestamp": "2024-01-15T09:28:44Z", "level": "ERROR", "service": "payment-gateway", "message": "Stripe API 429 Too Many Requests - silent retry initiated"},
+    {"timestamp": "2024-01-15T09:31:02Z", "level": "ERROR", "service": "checkout-api",    "message": "Idempotency key collision detected - possible duplicate charge"},
+    {"timestamp": "2024-01-15T09:35:19Z", "level": "ERROR", "service": "checkout-api",    "message": "Idempotency key collision detected - possible duplicate charge"},
+    {"timestamp": "2024-01-15T09:41:33Z", "level": "ERROR", "service": "checkout-api",    "message": "Idempotency key collision detected - possible duplicate charge"}
+  ]
+}

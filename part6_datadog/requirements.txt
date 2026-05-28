@@ -1,0 +1,7 @@
+# Part 6 - Datadog + LLM Reasoning
+# Tested on Windows, Python 3.13.5
+# No new dependencies - uses stdlib + already installed packages
+# Already installed: pytest, python-dotenv, openai
+
+# Optional - real Datadog API (swap point in collectors)
+# datadog-api-client

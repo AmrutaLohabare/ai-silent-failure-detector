@@ -1,0 +1,74 @@
+[
+  {
+    "id": "INC-023",
+    "type": "CROSS_SIGNAL_LATENCY_SPIKE",
+    "service": "payment-gateway",
+    "title": "Stripe API degradation causing silent cross-signal latency cascade",
+    "root_cause": "Stripe API began returning intermittent 503s and 429s during a traffic spike. The checkout service retried silently up to 3 times before returning HTTP 200. Each retry added 1-2 seconds. No single signal crossed a threshold — p99 latency crept up gradually, error rate hovered at 1.8%, throughput dropped 42% as users abandoned. The combination of all three signals told the story.",
+    "detection_lag_hours": 0.75,
+    "business_impact": "312 customers double-charged due to non-idempotent retries. Throughput dropped 42% over 55 minutes. $89,000 revenue impact.",
+    "resolution": "Added idempotency keys to all Stripe API calls. Implemented circuit breaker on payment-gateway. Added cross-signal alert: if p99 > 2x baseline AND error_rate > 1% AND throughput_drop > 20% simultaneously, page immediately.",
+    "runbook": "1. Check Stripe status: https://status.stripe.com. 2. Check idempotency key collisions in logs: grep 'idempotency key collision'. 3. Identify duplicate charges: query orders WHERE created_at BETWEEN incident_start AND incident_end GROUP BY user_id HAVING count > 1. 4. Issue refunds for duplicates. 5. Enable circuit breaker: CIRCUIT_BREAKER_ENABLED=true.",
+    "signal_correlation": {
+      "metrics": "p99 latency rose from 210ms to 4300ms over 45 minutes",
+      "traces": "payment-gateway span consuming 94% of total trace duration",
+      "logs": "repeated retry warnings followed by idempotency collision errors"
+    },
+    "agent_verdict": "TRUE_POSITIVE",
+    "tags": ["stripe", "payment", "retry", "idempotency", "cross-signal", "latency", "observability"]
+  },
+  {
+    "id": "INC-024",
+    "type": "METRIC_LOG_DIVERGENCE",
+    "service": "recommendation-service",
+    "title": "Metric shows healthy, logs show silent failures — ML model serving divergence",
+    "root_cause": "The recommendations API reported HTTP 200 and normal latency metrics. However, logs showed the ML model was returning empty arrays for 34% of requests. The metrics dashboard showed green — response time was fine, error rate was 0%. Only log analysis revealed that 'success' responses contained no actual recommendations.",
+    "detection_lag_hours": 6,
+    "business_impact": "34% of users received empty recommendations for 6 hours. Estimated 18% drop in cross-sell revenue. Metrics-only monitoring gave zero indication of the problem.",
+    "resolution": "Added payload validation metric: track response_body_size_bytes as a separate metric. Alert when p50 of response_body_size drops below 100 bytes for endpoints expected to return data. Added log-metric correlation check.",
+    "runbook": "1. Check response body size metrics: if avg(response_body_size) < 100 bytes on /api/recommendations, escalate. 2. Verify ML model health: curl /api/recommendations/health. 3. Check model serving logs for empty array responses. 4. Enable fallback: RECOMMENDATION_FALLBACK=true.",
+    "signal_correlation": {
+      "metrics": "HTTP 200, normal latency, 0% error rate - all green",
+      "traces": "recommendation-service span completes normally",
+      "logs": "34% of responses contain empty recommendations array"
+    },
+    "agent_verdict": "TRUE_POSITIVE",
+    "tags": ["ml", "recommendations", "metric-divergence", "empty-response", "observability", "silent"]
+  },
+  {
+    "id": "INC-025",
+    "type": "THROUGHPUT_DROP_SILENT",
+    "service": "checkout-api",
+    "title": "42% throughput drop with no error rate increase — users abandoning silently",
+    "root_cause": "Checkout throughput dropped from 142 RPS to 82 RPS over 50 minutes. No error rate increase — HTTP 200 throughout. No latency spike on successful completions. The drop was caused by users abandoning the checkout flow mid-way due to slow payment processing, never reaching the error state. The system looked healthy. Users were leaving.",
+    "detection_lag_hours": 1,
+    "business_impact": "42% of checkout attempts abandoned. Revenue impact proportional to abandonment increase. Invisible to all standard monitors.",
+    "resolution": "Added abandonment rate tracking: measure checkout_started vs checkout_completed ratio. Alert when completion rate drops below 80%. Correlate with session drop-off metrics.",
+    "runbook": "1. Check checkout completion rate: checkout_completed / checkout_started for the window. 2. If completion rate < 80%, check payment gateway latency. 3. Check user session traces for abandoned checkout flows. 4. Correlate throughput drop with any recent deployment or dependency degradation.",
+    "signal_correlation": {
+      "metrics": "throughput dropped 42%, error rate 0%, latency normal for completions",
+      "traces": "no failed traces - abandoned sessions simply stop",
+      "logs": "no errors - abandonment leaves no log trace"
+    },
+    "agent_verdict": "TRUE_POSITIVE",
+    "tags": ["throughput", "abandonment", "checkout", "silent", "user-experience", "observability"]
+  },
+  {
+    "id": "INC-026",
+    "type": "TRACE_SPAN_ANOMALY",
+    "service": "payment-gateway",
+    "title": "Single dependency span consuming 94% of trace duration — silent bottleneck",
+    "root_cause": "Distributed traces showed checkout completing successfully at HTTP 200. However, trace analysis revealed the payment-gateway span was consuming 3,980ms out of a 4,250ms total trace — 94% of total duration. All other spans (inventory, notification) were healthy at under 50ms. The bottleneck was invisible in aggregate metrics because the overall success rate was maintained through retries.",
+    "detection_lag_hours": 0.5,
+    "business_impact": "Users experienced 4+ second checkout times. 31% abandonment rate increase. Trace analysis identified the bottleneck 30 minutes faster than metrics-only monitoring.",
+    "resolution": "Added span-level SLA alerts: if any single span consumes more than 80% of parent trace duration AND parent duration > 2x baseline, alert immediately. Added payment-gateway specific latency SLO: p99 < 500ms.",
+    "runbook": "1. Query traces: filter spans WHERE duration_ms > parent_duration * 0.8. 2. Identify the bottleneck service. 3. Check that service's own metrics and logs. 4. For payment-gateway: check Stripe dashboard for API degradation. 5. Implement circuit breaker if bottleneck persists > 10 minutes.",
+    "signal_correlation": {
+      "metrics": "aggregate p99 rising but not obviously alarming",
+      "traces": "payment-gateway span = 94% of total trace duration",
+      "logs": "retry warnings in checkout-api correlate with slow payment-gateway spans"
+    },
+    "agent_verdict": "TRUE_POSITIVE",
+    "tags": ["traces", "spans", "bottleneck", "payment", "distributed-tracing", "observability"]
+  }
+]
