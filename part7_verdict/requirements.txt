@@ -1,0 +1,3 @@
+# Part 7 - The Verdict
+# No new dependencies - runs on what is already installed
+# pytest, python-dotenv already installed from Parts 1-6
